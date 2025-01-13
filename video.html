@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Video Swiper</title>
+	<style>
+		body,
+		html {
+			margin: 0;
+			padding: 0;
+			overflow: hidden;
+			height: 100%;
+			display: flex;
+			flex-direction: column;
+			justify-content: center;
+			align-items: center;
+			background-color: #000;
+		}
+
+		#videoContainer {
+			display: flex;
+			flex-direction: column;
+			align-items: center;
+		}
+
+		video {
+			width: 100%;
+			height: auto;
+			max-height: 80%;
+		}
+
+		#thumbnailContainer {
+			display: flex;
+			justify-content: center;
+			flex-wrap: wrap;
+			margin-top: 10px;
+		}
+
+		.thumbnail {
+			width: 120px;
+			height: 90px;
+			margin: 5px;
+			cursor: pointer;
+			object-fit: cover;
+		}
+
+		h1 {
+			color: #fff;
+		}
+	</style>
+</head>
+
+<body>
+	<div id="videoContainer">
+		<h1 id="title"></h1>
+		<video id="videoPlayer" controls autoplay>
+			<source src="/home/newton/repo/showcase/Football-Analysis-using-YOLO/input_videos/match.mp4"
+				type="video/mp4">
+			Your browser does not support the video tag.
+		</video>
+	</div>
+
+	<div id="thumbnailContainer"></div>
+
+	<script>
+		const videos = [
+			"http://localhost:3000/video/match.mp4",
+			"http://localhost:3000/video/output_video.mp4",
+			"http://localhost:3000/video/badmodel.mp4",
+			"http://localhost:3000/video/videoplayback.mp4"
+		];
+		let currentVideoIndex = 0;
+		const videoPlayer = document.getElementById('videoPlayer');
+		const title = document.getElementById('title');
+		const thumbnailContainer = document.getElementById('thumbnailContainer');
+
+		function updateVideo() {
+			videoPlayer.src = videos[currentVideoIndex];
+			title.textContent = videos[currentVideoIndex];
+			videoPlayer.play();
+		}
+
+		videoPlayer.addEventListener('ended', () => {
+			currentVideoIndex = (currentVideoIndex + 1) % videos.length;
+			updateVideo();
+		});
+
+		document.addEventListener('keydown', (event) => {
+			if (event.code === 'ArrowUp') {
+				currentVideoIndex = (currentVideoIndex + 1) % videos.length;
+			} else if (event.code === 'ArrowDown') {
+				currentVideoIndex = (currentVideoIndex - 1 + videos.length) % videos.length;
+			}
+			updateVideo();
+		});
+
+		videos.forEach((video, index) => {
+			const thumbnail = document.createElement('video');
+			thumbnail.src = video;
+			thumbnail.classList.add('thumbnail');
+			thumbnail.addEventListener('click', () => {
+				currentVideoIndex = index;
+				updateVideo();
+			});
+			thumbnailContainer.appendChild(thumbnail);
+		});
+
+		updateVideo();
+	</script>
+</body>
+
+</html>

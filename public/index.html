@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Video Streaming</title>
+	<style>
+		body {
+			font-family: Arial, sans-serif;
+			padding: 20px;
+			background-color: #f4f4f9;
+		}
+
+		h1 {
+			color: #333;
+		}
+
+		.search-container {
+			margin-bottom: 20px;
+		}
+
+		.search-box {
+			width: 100%;
+			padding: 10px;
+			border-radius: 5px;
+			border: 1px solid #ccc;
+		}
+
+		.thumbnail-container {
+			display: flex;
+			flex-wrap: wrap;
+			gap: 10px;
+		}
+
+		.thumbnail {
+			width: 150px;
+			cursor: pointer;
+		}
+
+		.thumbnail img {
+			width: 100%;
+			border-radius: 8px;
+		}
+
+		.video-container {
+			display: none;
+			margin-top: 20px;
+		}
+
+		video {
+			max-width: 100%;
+			height: auto;
+			border: 1px solid #ccc;
+			border-radius: 8px;
+			box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+		}
+	</style>
+</head>
+
+<body>
+	<h1>Video Streaming</h1>
+	<div class="search-container">
+		<input type="text" class="search-box" placeholder="Search for videos..." id="searchBox">
+	</div>
+	<div id="explorePage" class="thumbnail-container"></div>
+	<div id="videoPlayer" class="video-container">
+		<h2 id="videoTitle"></h2>
+		<video controls id="videoElement"></video>
+	</div>
+
+	<script>
+		let videos = [];
+		let filteredVideos = [];
+
+		function displayThumbnails(videoList) {
+			const explorePage = document.getElementById('explorePage');
+			explorePage.innerHTML = '';
+			videoList.forEach(video => {
+				const container = document.createElement('div');
+				container.className = 'thumbnail';
+
+				const img = document.createElement('img');
+				img.src = `/thumbnails/${video}.jpg`; // Assuming you have thumbnail images
+				img.alt = video;
+				img.onclick = () => playVideo(video);
+
+				container.appendChild(img);
+				explorePage.appendChild(container);
+			});
+		}
+
+		function playVideo(video) {
+			const videoPlayer = document.getElementById('videoPlayer');
+			const videoElement = document.getElementById('videoElement');
+			const videoTitle = document.getElementById('videoTitle');
+
+			videoElement.src = `/video/${video}`;
+			videoTitle.innerText = video;
+			videoPlayer.style.display = 'block';
+			videoElement.play();
+		}
+
+		//document.getElementById('searchBox').addEventListener('input', (e) => {
+		//	const query = e.target.value.toLowerCase();
+		//	filteredVideos = videos.filter(video => video.toLowerCase().includes(query));
+		//	displayThumbnails(filteredVideos);
+		//});
+
+		function fuzzySearch(query, videoList) {
+			const queryLower = query.toLowerCase();
+			return videoList.filter(video => {
+				let queryIndex = 0;
+				const videoLower = video.toLowerCase();
+
+				for (let i = 0; i < videoLower.length; i++) {
+					if (videoLower[i] === queryLower[queryIndex]) {
+						queryIndex++;
+					}
+					if (queryIndex === queryLower.length) {
+						return true;
+					}
+				}
+				return false;
+			});
+		}
+
+		document.getElementById('searchBox').addEventListener('input', (e) => {
+			const query = e.target.value;
+			filteredVideos = fuzzySearch(query, videos);
+			displayThumbnails(filteredVideos);
+		});
+
+		fetch('/videos')
+			.then(response => response.json())
+			.then(data => {
+				videos = data;
+				filteredVideos = videos;
+				displayThumbnails(filteredVideos);
+			})
+			.catch(error => console.error('Error fetching video list:', error));
+	</script>
+</body>
+
+</html>
