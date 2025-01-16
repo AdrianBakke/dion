@@ -4,6 +4,9 @@ const fs = require('fs');
 const cors = require('cors');
 const sqlite3 = require('sqlite3').verbose();
 const util = require('util');
+const ffmpeg = require('fluent-ffmpeg');
+const ffmpegPath = require('ffmpeg-static');
+ffmpeg.setFfmpegPath(ffmpegPath);
 
 const app = express();
 const PORT = 3000;
@@ -12,6 +15,7 @@ const PORT = 3000;
 app.use(cors());
 
 const videoDir = '/var/media/dion/videos/';
+const thumbnailDir = '/var/media/dion/thumbnails/';
 
 // Initialize SQLite database
 let db = new sqlite3.Database(':memory:', (err) => {
@@ -22,6 +26,33 @@ let db = new sqlite3.Database(':memory:', (err) => {
     }
 });
 
+function create_thumbnail(name) {
+    const videoPath = path.join(videoDir, `${name}.mp4`);
+    const thumbnailPath = path.join(thumbnailDir, `${name}.png`);
+
+    // Check if the thumbnail already exists
+    fs.promises.access(thumbnailPath, fs.constants.F_OK)
+        .then(() => {
+            console.log(`Thumbnail for ${name} already exists.`);
+        })
+        .catch(() => {
+            // Thumbnail does not exist, create it
+            ffmpeg(videoPath)
+                .screenshots({
+                    timestamps: ['00:00:01'],
+                    filename: `${name}.png`,
+                    folder: thumbnailDir,
+                    size: '320x240'
+                })
+                .on('end', () => {
+                    console.log(`Thumbnail created for ${name}.`);
+                })
+                .on('error', (err) => {
+                    console.error(`Error creating thumbnail for ${name}:`, err);
+                });
+        });
+}
+//
 // Convert db.run and db.all to promise-based functions
 const dbRun = util.promisify(db.run.bind(db));
 const dbAll = util.promisify(db.all.bind(db));
@@ -57,6 +88,7 @@ function initializeDatabase() {
             console.log('Videos:');
             rows.forEach((row) => {
                 console.log(row.name);
+                create_thumbnail(row.name.replace(".mp4", ""))
             });
         })
         .catch((err) => {
@@ -65,6 +97,7 @@ function initializeDatabase() {
 }
 
 initializeDatabase();
+
 
 // Serve static files from the 'public' directory
 app.use(express.static(path.join(__dirname, 'public')));
@@ -83,7 +116,6 @@ app.get('/videos', (req, res) => {
 
 app.get('/video/:name', (req, res) => {
     const videoPath = path.join(videoDir, req.params.name);
-
     const stat = fs.statSync(videoPath);
     const fileSize = stat.size;
     const range = req.headers.range;
@@ -111,6 +143,17 @@ app.get('/video/:name', (req, res) => {
         res.writeHead(200, head);
         fs.createReadStream(videoPath).pipe(res);
     }
+});
+
+app.get('/thumbnail/:name', (req, res) => {
+    const thumbnailPath = path.join(thumbnailDir, `${req.params.name}.png`);
+    fs.access(thumbnailPath, fs.constants.F_OK, (err) => {
+        if (err) {
+            return res.status(404).send('Thumbnail not found');
+        }
+
+        res.sendFile(thumbnailPath);
+    });
 });
 
 app.listen(PORT, () => {
