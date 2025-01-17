@@ -7,9 +7,10 @@ const util = require('util');
 const ffmpeg = require('fluent-ffmpeg');
 const ffmpegPath = require('ffmpeg-static');
 ffmpeg.setFfmpegPath(ffmpegPath);
+const https = require('https'); // Import the https module
 
 const app = express();
-const PORT = 3000;
+const PORT = 3000; // HTTPS typically uses port 443, use 3000 for local dev
 
 // Use CORS middleware
 app.use(cors());
@@ -48,24 +49,24 @@ function create_thumbnail(name) {
                     console.log(`Thumbnail created for ${name}.`);
                 })
                 .on('error', (err) => {
-                    console.error(`Error creating thumbnail for ${name}:`, err);
+                    console.error(`Error creating thumbnail for ${name}: `, err);
                 });
         });
 }
-//
+
 // Convert db.run and db.all to promise-based functions
 const dbRun = util.promisify(db.run.bind(db));
 const dbAll = util.promisify(db.all.bind(db));
 
 function initializeDatabase() {
-    dbRun(`CREATE TABLE videos (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        name TEXT NOT NULL,
-        owner TEXT NOT NULL,
-        metadata BLOB
-    )`)
+    dbRun(`CREATE TABLE videos(
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    owner TEXT NOT NULL,
+    metadata BLOB
+)`)
         .then(() => {
-            dbRun(`CREATE INDEX idx_name ON videos (name)`)
+            dbRun(`CREATE INDEX idx_name ON videos(name)`)
             console.log('Table and index created successfully.');
         })
         .then(() => {
@@ -74,7 +75,7 @@ function initializeDatabase() {
         .then((files) => {
             const videoFiles = files.filter(file => file.endsWith('.mp4'));
             const insertPromises = videoFiles.map(file => {
-                return dbRun(`INSERT INTO videos (name, owner, metadata) VALUES (?, ?, ?)`, [file, 'unknown', null])
+                return dbRun(`INSERT INTO videos(name, owner, metadata) VALUES(?, ?, ?)`, [file, 'unknown', null])
                     .then(() => {
                         console.log(`Inserted ${file} into the database.`);
                     });
@@ -97,7 +98,6 @@ function initializeDatabase() {
 }
 
 initializeDatabase();
-
 
 // Serve static files from the 'public' directory
 app.use(express.static(path.join(__dirname, 'public')));
@@ -127,7 +127,7 @@ app.get('/video/:name', (req, res) => {
         const chunksize = (end - start) + 1;
         const file = fs.createReadStream(videoPath, { start, end });
         const head = {
-            'Content-Range': `bytes ${start}-${end}/${fileSize}`,
+            'Content-Range': `bytes ${start} -${end}/${fileSize}`,
             'Accept-Ranges': 'bytes',
             'Content-Length': chunksize,
             'Content-Type': 'video/mp4',
@@ -156,8 +156,14 @@ app.get('/thumbnail/:name', (req, res) => {
     });
 });
 
-app.listen(PORT, () => {
-    console.log(`Server is running on http://localhost:${PORT}`);
+const options = {
+    key: fs.readFileSync('cert/key.pem'),
+    cert: fs.readFileSync('cert/cert.pem')
+};
+
+
+https.createServer(options, app).listen(PORT, () => {
+    console.log(`Server is running on https://localhost:${PORT}`);
 });
 
 // Serve the index.html file at the root route
