@@ -14,8 +14,8 @@ const PORT = 3000;
 // Use CORS middleware
 app.use(cors());
 
-const videoDir = '/var/media/dion/videos/';
-const thumbnailDir = '/var/media/dion/thumbnails/';
+const videoDir = '/var/media/kanelsnurr/videos/';
+const thumbnailDir = '/var/media/kanelsnurr/thumbnails/';
 
 // Initialize SQLite database
 let db = new sqlite3.Database(':memory:', (err) => {
